@@ -146,7 +146,7 @@ ITOP_REST_PASS=password
 python3 osv-scan.py
 
 # Override connection settings
-python3 osv-scan.py --url http://51.20.136.47/itop --user sbom --pass 'Passw0rd!'
+python3 osv-scan.py --url http://51.20.136.47/itop --user sbom --pass 'password'
 
 # Dry run — scan only, don't write to iTop
 python3 osv-scan.py --dry-run
