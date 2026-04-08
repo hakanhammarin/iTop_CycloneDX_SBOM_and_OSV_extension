@@ -1,0 +1,642 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<itop_design xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.0">
+  <constants/>
+  <classes>
+
+    <!-- ============================================================
+         SBOMComponent — a single package/library from a CycloneDX BOM
+         Extends FunctionalCI so it lives in the CMDB with org, contacts, etc.
+    ============================================================ -->
+    <class id="SBOMComponent" _delta="define">
+      <parent>FunctionalCI</parent>
+      <properties>
+        <category>bizmodel,searchable</category>
+        <abstract>false</abstract>
+        <key_type>autoincrement</key_type>
+        <db_table>sbomcomponent</db_table>
+        <db_key_field>id</db_key_field>
+        <db_final_class_field/>
+        <naming>
+          <attributes>
+            <attribute id="name"/>
+          </attributes>
+        </naming>
+        <display_template/>
+        <icon>images/component.png</icon>
+        <reconciliation>
+          <attributes>
+            <attribute id="purl"/>
+          </attributes>
+        </reconciliation>
+        <state_attcode>status</state_attcode>
+      </properties>
+      <fields>
+        <field id="status" xsi:type="AttributeEnum">
+          <values>
+            <value id="active">active</value>
+            <value id="deprecated">deprecated</value>
+            <value id="obsolete">obsolete</value>
+          </values>
+          <sql>status</sql>
+          <default_value>active</default_value>
+          <is_null_allowed>false</is_null_allowed>
+          <display_style>list</display_style>
+        </field>
+
+        <field id="version" xsi:type="AttributeString">
+          <sql>version</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
+        <!-- Package URL — globally unique identifier per CycloneDX/PURL spec -->
+        <field id="purl" xsi:type="AttributeString">
+          <sql>purl</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
+        <!-- CPE — Common Platform Enumeration (optional) -->
+        <field id="cpe" xsi:type="AttributeString">
+          <sql>cpe</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
+        <field id="component_type" xsi:type="AttributeEnum">
+          <values>
+            <value id="application">application</value>
+            <value id="library">library</value>
+            <value id="framework">framework</value>
+            <value id="container">container</value>
+            <value id="firmware">firmware</value>
+            <value id="device">device</value>
+            <value id="data">data</value>
+            <value id="file">file</value>
+          </values>
+          <sql>component_type</sql>
+          <default_value>library</default_value>
+          <is_null_allowed>true</is_null_allowed>
+          <display_style>list</display_style>
+        </field>
+
+        <field id="license_expression" xsi:type="AttributeString">
+          <sql>license_expression</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
+        <field id="supplier_name" xsi:type="AttributeString">
+          <sql>supplier_name</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
+        <!-- SHA-256 hash of the component (from CycloneDX hashes array) -->
+        <field id="hash_sha256" xsi:type="AttributeString">
+          <sql>hash_sha256</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
+        <!-- ── Vulnerability data cached from OSV.dev ─────────────────────
+             Populated by the 3D viewer or any external scanner.
+             Avoids re-hitting osv.dev on every visualisation load.
+        ──────────────────────────────────────────────────────────────── -->
+
+        <!-- Highest CVE severity found for this component -->
+        <field id="vuln_severity" xsi:type="AttributeEnum">
+          <values>
+            <value id="none">none</value>
+            <value id="low">low</value>
+            <value id="medium">medium</value>
+            <value id="high">high</value>
+            <value id="critical">critical</value>
+          </values>
+          <sql>vuln_severity</sql>
+          <default_value>none</default_value>
+          <is_null_allowed>false</is_null_allowed>
+          <display_style>list</display_style>
+        </field>
+
+        <!-- Space-separated CVE/GHSA IDs, e.g. "CVE-2021-44228 CVE-2021-45046" -->
+        <field id="vuln_ids" xsi:type="AttributeText">
+          <sql>vuln_ids</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
+        <!-- Highest CVSS v3 base score (e.g. "9.8") -->
+        <field id="vuln_cvss_score" xsi:type="AttributeDecimal">
+          <sql>vuln_cvss_score</sql>
+          <default_value>0</default_value>
+          <is_null_allowed>true</is_null_allowed>
+          <digits>4</digits>
+          <decimals>1</decimals>
+        </field>
+
+        <!-- Primary attack vector of the highest-severity CVE -->
+        <field id="vuln_attack_vector" xsi:type="AttributeEnum">
+          <values>
+            <value id="">unknown</value>
+            <value id="network">network</value>
+            <value id="adjacent">adjacent</value>
+            <value id="local">local</value>
+            <value id="physical">physical</value>
+          </values>
+          <sql>vuln_attack_vector</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+          <display_style>list</display_style>
+        </field>
+
+        <!-- When the vulnerability data was last refreshed (ISO 8601) -->
+        <field id="vuln_last_scanned" xsi:type="AttributeDateTime">
+          <sql>vuln_last_scanned</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
+        <!-- Back-references: which artifacts include this component -->
+        <field id="sbom_artifacts_list" xsi:type="AttributeLinkedSetIndirect">
+          <linked_class>lnkSBOMArtifactToSBOMComponent</linked_class>
+          <ext_key_to_me>component_id</ext_key_to_me>
+          <ext_key_to_remote>artifact_id</ext_key_to_remote>
+          <count_min>0</count_min>
+          <count_max>0</count_max>
+          <duplicates/>
+        </field>
+
+        <!-- Components this one depends on (outgoing deps) -->
+        <field id="dependencies_list" xsi:type="AttributeLinkedSetIndirect">
+          <linked_class>lnkSBOMComponentToSBOMComponent</linked_class>
+          <ext_key_to_me>dependent_id</ext_key_to_me>
+          <ext_key_to_remote>dependency_id</ext_key_to_remote>
+          <count_min>0</count_min>
+          <count_max>0</count_max>
+          <duplicates/>
+        </field>
+
+        <!-- Components that depend on this one (incoming deps) -->
+        <field id="dependents_list" xsi:type="AttributeLinkedSetIndirect">
+          <linked_class>lnkSBOMComponentToSBOMComponent</linked_class>
+          <ext_key_to_me>dependency_id</ext_key_to_me>
+          <ext_key_to_remote>dependent_id</ext_key_to_remote>
+          <count_min>0</count_min>
+          <count_max>0</count_max>
+          <duplicates/>
+        </field>
+      </fields>
+      <methods/>
+
+      <!-- Impact relation: SBOMComponent → SBOMArtifact (→ FunctionalCI → Apps → BizProcs) -->
+      <relations>
+        <relation id="impacts">
+          <neighbours>
+            <neighbour id="comp_to_artifact">
+              <query_down>SELECT SBOMArtifact AS a JOIN lnkSBOMArtifactToSBOMComponent AS lnk ON lnk.artifact_id = a.id WHERE lnk.component_id = :this->id</query_down>
+              <query_up>SELECT SBOMComponent AS c JOIN lnkSBOMArtifactToSBOMComponent AS lnk ON lnk.component_id = c.id WHERE lnk.artifact_id = :this->id</query_up>
+            </neighbour>
+          </neighbours>
+        </relation>
+      </relations>
+
+      <presentation>
+        <details>
+          <items>
+            <item id="name"><rank>10</rank></item>
+            <item id="org_id"><rank>15</rank></item>
+            <item id="status"><rank>17</rank></item>
+            <item id="version"><rank>20</rank></item>
+            <item id="component_type"><rank>30</rank></item>
+            <item id="purl"><rank>40</rank></item>
+            <item id="cpe"><rank>50</rank></item>
+            <item id="supplier_name"><rank>60</rank></item>
+            <item id="license_expression"><rank>70</rank></item>
+            <item id="hash_sha256"><rank>80</rank></item>
+            <item id="description"><rank>90</rank></item>
+            <item id="vuln_severity"><rank>92</rank></item>
+            <item id="vuln_ids"><rank>93</rank></item>
+            <item id="vuln_cvss_score"><rank>94</rank></item>
+            <item id="vuln_attack_vector"><rank>95</rank></item>
+            <item id="vuln_last_scanned"><rank>96</rank></item>
+            <item id="sbom_artifacts_list"><rank>100</rank></item>
+            <item id="dependencies_list"><rank>110</rank></item>
+            <item id="dependents_list"><rank>120</rank></item>
+          </items>
+        </details>
+        <search>
+          <items>
+            <item id="name"><rank>10</rank></item>
+            <item id="org_id"><rank>15</rank></item>
+            <item id="version"><rank>20</rank></item>
+            <item id="component_type"><rank>30</rank></item>
+            <item id="purl"><rank>40</rank></item>
+            <item id="status"><rank>45</rank></item>
+            <item id="license_expression"><rank>50</rank></item>
+          </items>
+        </search>
+        <list>
+          <items>
+            <item id="org_id"><rank>5</rank></item>
+            <item id="version"><rank>10</rank></item>
+            <item id="component_type"><rank>20</rank></item>
+            <item id="status"><rank>25</rank></item>
+            <item id="purl"><rank>30</rank></item>
+            <item id="license_expression"><rank>40</rank></item>
+          </items>
+        </list>
+      </presentation>
+    </class>
+
+    <!-- ============================================================
+         SBOMArtifact — the primary component of a CycloneDX SBOM
+         Extends FunctionalCI so it lives in the CMDB and can be
+         linked to organisations, contacts, documents, changes, etc.
+    ============================================================ -->
+    <class id="SBOMArtifact" _delta="define">
+      <parent>FunctionalCI</parent>
+      <properties>
+        <category>bizmodel,searchable</category>
+        <abstract>false</abstract>
+        <key_type>autoincrement</key_type>
+        <db_table>sbomartifact</db_table>
+        <db_key_field>id</db_key_field>
+        <db_final_class_field/>
+        <naming>
+          <attributes>
+            <attribute id="name"/>
+          </attributes>
+        </naming>
+        <display_template/>
+        <icon>images/artifact.png</icon>
+        <reconciliation>
+          <attributes>
+            <attribute id="name"/>
+            <attribute id="version"/>
+            <attribute id="org_id"/>
+          </attributes>
+        </reconciliation>
+        <state_attcode>status</state_attcode>
+      </properties>
+      <fields>
+        <field id="status" xsi:type="AttributeEnum">
+          <values>
+            <value id="active">active</value>
+            <value id="archived">archived</value>
+            <value id="obsolete">obsolete</value>
+          </values>
+          <sql>status</sql>
+          <default_value>active</default_value>
+          <is_null_allowed>false</is_null_allowed>
+          <display_style>list</display_style>
+        </field>
+
+        <field id="version" xsi:type="AttributeString">
+          <sql>version</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
+        <field id="purl" xsi:type="AttributeString">
+          <sql>purl</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
+        <field id="component_type" xsi:type="AttributeEnum">
+          <values>
+            <value id="application">application</value>
+            <value id="library">library</value>
+            <value id="framework">framework</value>
+            <value id="container">container</value>
+            <value id="firmware">firmware</value>
+            <value id="device">device</value>
+            <value id="data">data</value>
+            <value id="file">file</value>
+          </values>
+          <sql>component_type</sql>
+          <default_value>application</default_value>
+          <is_null_allowed>true</is_null_allowed>
+          <display_style>list</display_style>
+        </field>
+
+        <!-- CycloneDX spec version (e.g. "1.4", "1.5", "1.6") -->
+        <field id="cyclonedx_version" xsi:type="AttributeString">
+          <sql>cyclonedx_version</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
+        <!-- BOM serial number (URN UUID from CycloneDX serialNumber field) -->
+        <field id="sbom_serial_number" xsi:type="AttributeString">
+          <sql>sbom_serial_number</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
+        <field id="supplier_name" xsi:type="AttributeString">
+          <sql>supplier_name</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
+        <field id="license_expression" xsi:type="AttributeString">
+          <sql>license_expression</sql>
+          <default_value/>
+          <is_null_allowed>true</is_null_allowed>
+        </field>
+
+        <!-- Link to the FunctionalCI (ApplicationSolution, Server, etc.)
+             that this SBOM was generated for / describes -->
+        <field id="functionalci_id" xsi:type="AttributeExternalKey">
+          <sql>functionalci_id</sql>
+          <target_class>FunctionalCI</target_class>
+          <is_null_allowed>true</is_null_allowed>
+          <on_target_delete>DEL_MANUAL</on_target_delete>
+          <allow_target_creation>false</allow_target_creation>
+        </field>
+        <field id="functionalci_name" xsi:type="AttributeExternalField">
+          <extkey_attcode>functionalci_id</extkey_attcode>
+          <target_attcode>name</target_attcode>
+        </field>
+
+        <!-- All components (libraries/deps) included in this SBOM -->
+        <field id="components_list" xsi:type="AttributeLinkedSetIndirect">
+          <linked_class>lnkSBOMArtifactToSBOMComponent</linked_class>
+          <ext_key_to_me>artifact_id</ext_key_to_me>
+          <ext_key_to_remote>component_id</ext_key_to_remote>
+          <count_min>0</count_min>
+          <count_max>0</count_max>
+          <duplicates/>
+        </field>
+      </fields>
+      <methods/>
+
+      <presentation>
+        <details>
+          <items>
+            <item id="name"><rank>10</rank></item>
+            <item id="org_id"><rank>20</rank></item>
+            <item id="version"><rank>30</rank></item>
+            <item id="component_type"><rank>40</rank></item>
+            <item id="status"><rank>50</rank></item>
+            <item id="functionalci_id"><rank>70</rank></item>
+            <item id="purl"><rank>80</rank></item>
+            <item id="cyclonedx_version"><rank>90</rank></item>
+            <item id="sbom_serial_number"><rank>100</rank></item>
+            <item id="supplier_name"><rank>110</rank></item>
+            <item id="license_expression"><rank>120</rank></item>
+            <item id="description"><rank>130</rank></item>
+            <item id="components_list"><rank>160</rank></item>
+          </items>
+        </details>
+        <search>
+          <items>
+            <item id="name"><rank>10</rank></item>
+            <item id="org_id"><rank>20</rank></item>
+            <item id="version"><rank>30</rank></item>
+            <item id="component_type"><rank>40</rank></item>
+            <item id="status"><rank>50</rank></item>
+            <item id="purl"><rank>60</rank></item>
+          </items>
+        </search>
+        <list>
+          <items>
+            <item id="org_id"><rank>10</rank></item>
+            <item id="version"><rank>20</rank></item>
+            <item id="component_type"><rank>30</rank></item>
+            <item id="status"><rank>40</rank></item>
+            <item id="functionalci_name"><rank>50</rank></item>
+          </items>
+        </list>
+      </presentation>
+
+      <relations>
+        <relation id="impacts">
+          <neighbours>
+            <neighbour id="sbom_to_functionalci">
+              <query_down>SELECT FunctionalCI AS ci WHERE ci.id = :this->functionalci_id</query_down>
+              <query_up>SELECT SBOMArtifact AS a WHERE a.functionalci_id = :this->id</query_up>
+            </neighbour>
+          </neighbours>
+        </relation>
+      </relations>
+    </class>
+
+    <!-- ============================================================
+         lnkSBOMArtifactToSBOMComponent
+         Many-to-many: an artifact contains many components,
+         a component may appear in many artifacts.
+         Carries dependency_type to flag direct vs transitive.
+    ============================================================ -->
+    <class id="lnkSBOMArtifactToSBOMComponent" _delta="define">
+      <parent>cmdbAbstractObject</parent>
+      <properties>
+        <is_link>1</is_link>
+        <category>bizmodel</category>
+        <abstract>false</abstract>
+        <key_type>autoincrement</key_type>
+        <db_table>lnksbomartifacttosbomcomponent</db_table>
+        <db_key_field>id</db_key_field>
+        <db_final_class_field/>
+        <naming>
+          <attributes>
+            <attribute id="artifact_id"/>
+            <attribute id="component_id"/>
+          </attributes>
+        </naming>
+        <display_template/>
+        <icon/>
+        <reconciliation>
+          <attributes>
+            <attribute id="artifact_id"/>
+            <attribute id="component_id"/>
+          </attributes>
+        </reconciliation>
+      </properties>
+      <fields>
+        <field id="artifact_id" xsi:type="AttributeExternalKey">
+          <sql>artifact_id</sql>
+          <target_class>SBOMArtifact</target_class>
+          <is_null_allowed>false</is_null_allowed>
+          <on_target_delete>DEL_AUTO</on_target_delete>
+        </field>
+        <field id="artifact_name" xsi:type="AttributeExternalField">
+          <extkey_attcode>artifact_id</extkey_attcode>
+          <target_attcode>name</target_attcode>
+        </field>
+
+        <field id="component_id" xsi:type="AttributeExternalKey">
+          <sql>component_id</sql>
+          <target_class>SBOMComponent</target_class>
+          <is_null_allowed>false</is_null_allowed>
+          <on_target_delete>DEL_AUTO</on_target_delete>
+        </field>
+        <field id="component_name" xsi:type="AttributeExternalField">
+          <extkey_attcode>component_id</extkey_attcode>
+          <target_attcode>name</target_attcode>
+        </field>
+
+        <field id="dependency_type" xsi:type="AttributeEnum">
+          <values>
+            <value id="direct">direct</value>
+            <value id="transitive">transitive</value>
+          </values>
+          <sql>dependency_type</sql>
+          <default_value>direct</default_value>
+          <is_null_allowed>true</is_null_allowed>
+          <display_style>list</display_style>
+        </field>
+      </fields>
+
+      <uniqueness_rules>
+        <rule id="no_duplicate">
+          <attributes>
+            <attribute id="artifact_id"/>
+            <attribute id="component_id"/>
+          </attributes>
+        </rule>
+      </uniqueness_rules>
+
+      <methods/>
+      <presentation>
+        <details>
+          <items>
+            <item id="artifact_id"><rank>10</rank></item>
+            <item id="component_id"><rank>20</rank></item>
+            <item id="dependency_type"><rank>30</rank></item>
+          </items>
+        </details>
+        <search>
+          <items>
+            <item id="artifact_id"><rank>10</rank></item>
+            <item id="component_id"><rank>20</rank></item>
+            <item id="dependency_type"><rank>30</rank></item>
+          </items>
+        </search>
+        <list>
+          <items>
+            <item id="artifact_id"><rank>10</rank></item>
+            <item id="component_id"><rank>20</rank></item>
+            <item id="dependency_type"><rank>30</rank></item>
+          </items>
+        </list>
+      </presentation>
+    </class>
+
+    <!-- ============================================================
+         lnkSBOMComponentToSBOMComponent
+         Represents the dependency graph edge: dependent depends_on dependency.
+         Maps directly to the CycloneDX "dependencies" array.
+    ============================================================ -->
+    <class id="lnkSBOMComponentToSBOMComponent" _delta="define">
+      <parent>cmdbAbstractObject</parent>
+      <properties>
+        <is_link>1</is_link>
+        <category>bizmodel</category>
+        <abstract>false</abstract>
+        <key_type>autoincrement</key_type>
+        <db_table>lnksbomcomponenttosbomcomponent</db_table>
+        <db_key_field>id</db_key_field>
+        <db_final_class_field/>
+        <naming>
+          <attributes>
+            <attribute id="dependent_id"/>
+            <attribute id="dependency_id"/>
+          </attributes>
+        </naming>
+        <display_template/>
+        <icon/>
+        <reconciliation>
+          <attributes>
+            <attribute id="dependent_id"/>
+            <attribute id="dependency_id"/>
+          </attributes>
+        </reconciliation>
+      </properties>
+      <fields>
+        <!-- The component that HAS a dependency -->
+        <field id="dependent_id" xsi:type="AttributeExternalKey">
+          <sql>dependent_id</sql>
+          <target_class>SBOMComponent</target_class>
+          <is_null_allowed>false</is_null_allowed>
+          <on_target_delete>DEL_AUTO</on_target_delete>
+        </field>
+        <field id="dependent_name" xsi:type="AttributeExternalField">
+          <extkey_attcode>dependent_id</extkey_attcode>
+          <target_attcode>name</target_attcode>
+        </field>
+
+        <!-- The component that IS depended upon -->
+        <field id="dependency_id" xsi:type="AttributeExternalKey">
+          <sql>dependency_id</sql>
+          <target_class>SBOMComponent</target_class>
+          <is_null_allowed>false</is_null_allowed>
+          <on_target_delete>DEL_AUTO</on_target_delete>
+        </field>
+        <field id="dependency_name" xsi:type="AttributeExternalField">
+          <extkey_attcode>dependency_id</extkey_attcode>
+          <target_attcode>name</target_attcode>
+        </field>
+      </fields>
+
+      <uniqueness_rules>
+        <rule id="no_duplicate">
+          <attributes>
+            <attribute id="dependent_id"/>
+            <attribute id="dependency_id"/>
+          </attributes>
+        </rule>
+      </uniqueness_rules>
+
+      <methods/>
+      <presentation>
+        <details>
+          <items>
+            <item id="dependent_id"><rank>10</rank></item>
+            <item id="dependency_id"><rank>20</rank></item>
+          </items>
+        </details>
+        <search>
+          <items>
+            <item id="dependent_id"><rank>10</rank></item>
+            <item id="dependency_id"><rank>20</rank></item>
+          </items>
+        </search>
+        <list>
+          <items>
+            <item id="dependent_id"><rank>10</rank></item>
+            <item id="dependency_id"><rank>20</rank></item>
+          </items>
+        </list>
+      </presentation>
+    </class>
+
+  </classes>
+
+  <!-- ============================================================
+       Menu — add SBOM badge to ConfigManagement overview dashboard
+  ============================================================ -->
+  <menus>
+    <menu id="ConfigManagementOverview" xsi:type="DashboardMenuNode" _delta="must_exist">
+      <definition>
+        <cells>
+          <cell id="3" _delta="must_exist">
+            <dashlets>
+              <dashlet id="200" xsi:type="DashletBadge" _delta="define">
+                <rank>20</rank>
+                <class>SBOMArtifact</class>
+              </dashlet>
+              <dashlet id="201" xsi:type="DashletBadge" _delta="define">
+                <rank>21</rank>
+                <class>SBOMComponent</class>
+              </dashlet>
+            </dashlets>
+          </cell>
+        </cells>
+      </definition>
+    </menu>
+  </menus>
+
+</itop_design>
